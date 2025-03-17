@@ -1,150 +1,164 @@
-#reproduzindo a base de dados
-
 create database db_loja;
+
 use db_loja;
 
 CREATE TABLE categorias (
-    id INT(11) NOT NULL PRIMARY KEY AUTO_INCREMENT,
-    nome VARCHAR(255) NOT NULL
+    id INT(11) NOT NULL AUTO_INCREMENT,
+    nome VARCHAR(255) NOT NULL,
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE produtos (
-    id INT(11) NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    id INT(11) NOT NULL AUTO_INCREMENT,
     nome VARCHAR(255) NOT NULL,
     descricao TEXT,
-    preco DECIMAL(10 , 2 ) NOT NULL,
-    id_categoria INT(11)
+    preco DECIMAL(10, 2),
+    id_categoria INT(11),
+    PRIMARY KEY (id),
+    FOREIGN KEY (id_categoria) REFERENCES categorias(id)
+);
+
+CREATE TABLE clientes (
+    id INT(11) NOT NULL AUTO_INCREMENT,
+    nome VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE pedidos (
+    id INT(11) NOT NULL AUTO_INCREMENT,
+    data_pedido DATETIME NOT NULL,	
+    id_cliente INT(11),
+    PRIMARY KEY (id),
+    FOREIGN KEY (id_cliente) REFERENCES clientes(id)
 );
 
 CREATE TABLE itens_pedido (
     id_pedido INT(11) NOT NULL,
     id_produto INT(11) NOT NULL,
-    qantidade INT(11)
+    quantidade INT(11) NOT NULL,
+    PRIMARY KEY (id_pedido, id_produto),
+    FOREIGN KEY (id_pedido) REFERENCES pedidos(id),
+    FOREIGN KEY (id_produto) REFERENCES produtos(id)
 );
 
-CREATE TABLE pedidos (
-    id INT(11) NOT NULL PRIMARY KEY AUTO_INCREMENT,
-    data_pedido DATETIME NOT NULL,
-    id_cliente INT(11) NOT NULL
-);
+-- 2. Inserir categoria "Eletrônicos"
+INSERT INTO categorias (nome) VALUES ('Eletrônicos');
 
-CREATE TABLE clientes (
-    id INT(11) NOT NULL PRIMARY KEY AUTO_INCREMENT,
-    nome VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL
-);
+-- 2.1. Listar categorias
+SELECT * FROM categorias;
 
-#inserindo a nova categoria 'Eletrônicos'
-insert into categorias (nome) values ('Eletrônicos');
+-- 3. Adicionar produtos na categoria "Eletrônicos"
+INSERT INTO produtos (nome, descricao, preco, id_categoria) VALUES 
+('Smartphone', 'Smartphone de última geração', 1200.00, (SELECT id FROM categorias WHERE nome = 'Eletrônicos')),
+('Smart TV', 'Televisão 4K de 48 polegadas', 3000.00, (SELECT id FROM categorias WHERE nome = 'Eletrônicos'));
 
-#listando todas as categorias
-select * from categorias;
+-- 3.1. Listar produtos da categoria "Eletrônicos" (CORREÇÃO: produtos, não categorias)
+SELECT p.* 
+FROM produtos p
+INNER JOIN categorias c ON p.id_categoria = c.id
+WHERE c.nome = 'Eletrônicos';
 
-#inserindo dois produtos na categoria 'Eletronicos'
-insert into produtos (nome, descricao, preco, id_categoria)
-values
-	('Smartfone', 'Celular de útima geração!', 3000.00, (select id from categorias where nome = 'Eletrônicos')),
-    ('Smart TV', 'Televisão smart de alta definição!', 4000.00, (select id from categorias where nome = 'Eletrônicos'));
-    
-#listando os produtos da categoria 'Eletrônicos'
-select * from produtos
-where id_categoria = (select id from categorias where nome = 'Eletrônicos');
+-- 4. Registrar cliente "João Silva" (CORREÇÃO: email completo e nome correto)
+INSERT INTO clientes (nome, email) 
+VALUES ('João Silva', 'joao.silva@gmail.com');  -- Corrigido "gamil.com" para "gmail.com"
 
-INSERT INTO clientes (nome, email) VALUES ('João Silva', 'joao.silva@gmail.com');
-
+-- 4.1. Listar clientes
 SELECT * FROM clientes;
 
-INSERT INTO pedidos (id_cliente)
-VALUES ((SELECT id FROM clientes WHERE nome = 'João Silva'));
+-- 5. Criar pedido para João Silva
+INSERT INTO pedidos (data_pedido, id_cliente) 
+VALUES (NOW(), (SELECT id FROM clientes WHERE nome = 'João Silva'));
 
+-- 5.1. Listar pedidos
 SELECT * FROM pedidos;
 
-INSERT INTO itens_pedido (id_pedido, id_produto, quantidade)
+-- 6. Adicionar 2 Smartphones ao pedido de João Silva
+INSERT INTO itens_pedido (id_pedido, id_produto, quantidade) 
 VALUES (
     (SELECT id FROM pedidos WHERE id_cliente = (SELECT id FROM clientes WHERE nome = 'João Silva') ORDER BY id DESC LIMIT 1),
     (SELECT id FROM produtos WHERE nome = 'Smartphone'),
     2
 );
 
-SELECT * FROM itens_pedido;
+-- 6.1. Listar itens do pedido (CORREÇÃO: junção com tabela produtos)
+SELECT ip.id_pedido, p.nome AS produto, ip.quantidade 
+FROM itens_pedido ip
+INNER JOIN produtos p ON ip.id_produto = p.id;
 
-SELECT * FROM itens_pedido;
-
+-- 7. Inserir três categorias
 INSERT INTO categorias (nome) VALUES ('Livros'), ('Jogos'), ('Roupas');
 
-INSERT INTO produtos (nome, descricao, preco, id_categoria)
-VALUES (
-    'Camiseta',
-    'Camiseta de qualidade',
-    59.90,
-    (SELECT id FROM categorias WHERE nome = 'Roupas')
-);
+-- 8. Adicionar "Camiseta" em "Roupas"
+INSERT INTO produtos (nome, descricao, preco, id_categoria) 
+VALUES ('Camiseta', 'Camiseta de algodão', 59.90, (SELECT id FROM categorias WHERE nome = 'Roupas'));
 
-INSERT INTO clientes (nome, email) VALUES ('Maria Oliveira', 'maria.oliveira@gmail.com');
+-- 9. Registrar "Maria Oliveira" (CORREÇÃO: adicionar email)
+INSERT INTO clientes (nome, email) 
+VALUES ('Maria Oliveira', 'maria.oliveira@gmail.com');  -- Email adicionado
 
-INSERT INTO pedidos (id_cliente)
-VALUES ((SELECT id FROM clientes WHERE nome = 'Maria Oliveira'));
+-- 10. Criar pedido para Maria Oliveira (CORREÇÃO: adicionar dois itens)
+-- Primeiro cria o pedido
+INSERT INTO pedidos (data_pedido, id_cliente) 
+VALUES (NOW(), (SELECT id FROM clientes WHERE nome = 'Maria Oliveira'));
 
--- Adiciona 1 Smart TV
-INSERT INTO itens_pedido (id_pedido, id_produto, quantidade)
-VALUES (
-    (SELECT id FROM pedidos WHERE id_cliente = (SELECT id FROM clientes WHERE nome = 'Maria Oliveira') ORDER BY id DESC LIMIT 1),
-    (SELECT id FROM produtos WHERE nome = 'Smart TV'),
-    1
-);
+-- Depois insere os itens
+INSERT INTO itens_pedido (id_pedido, id_produto, quantidade) 
+VALUES 
+    ((SELECT id FROM pedidos WHERE id_cliente = (SELECT id FROM clientes WHERE nome = 'Maria Oliveira') ORDER BY id DESC LIMIT 1),
+    (SELECT id FROM produtos WHERE nome = 'Smart TV'), 1),
+    
+    ((SELECT id FROM pedidos WHERE id_cliente = (SELECT id FROM clientes WHERE nome = 'Maria Oliveira') ORDER BY id DESC LIMIT 1),
+    (SELECT id FROM produtos WHERE nome = 'Camiseta'), 1);
 
--- Adiciona 1 Camiseta
-INSERT INTO itens_pedido (id_pedido, id_produto, quantidade)
-VALUES (
-    (SELECT id FROM pedidos WHERE id_cliente = (SELECT id FROM clientes WHERE nome = 'Maria Oliveira') ORDER BY id DESC LIMIT 1),
-    (SELECT id FROM produtos WHERE nome = 'Camiseta'),
-    1
-);
-
+-- 11. Adicionar categoria e produto (CORREÇÃO: usar transação para atomicidade)
+START TRANSACTION;
 INSERT INTO categorias (nome) VALUES ('Acessórios');
+INSERT INTO produtos (nome, descricao, preco, id_categoria) 
+VALUES ('Capa para Smartphone', 'Capa protetora para smartphone', 49.90, LAST_INSERT_ID());
+COMMIT;
 
-INSERT INTO produtos (nome, descricao, preco, id_categoria)
-VALUES (
-    'Capa para Smartphone',
-    'Capa protetora para smartphone',
-    79.90,
-    (SELECT id FROM categorias WHERE nome = 'Acessórios')
-);
-
-SELECT * FROM produtos
-WHERE id_categoria = (SELECT id FROM categorias WHERE nome = 'Eletrônicos');
-
-SELECT p.*
-FROM pedidos p
-JOIN clientes c ON p.id_cliente = c.id
-WHERE c.nome = 'Maria Oliveira';
-
-SELECT * FROM produtos
-WHERE preco > 1000;
-
-SELECT *
+-- 12. Produtos de Eletrônicos
+SELECT p.* 
 FROM produtos p
-WHERE NOT EXISTS (
-    SELECT 1 FROM itens_pedido ip WHERE ip.id_produto = p.id
-);
+INNER JOIN categorias c ON p.id_categoria = c.id
+WHERE c.nome = 'Eletrônicos';
 
-SELECT ip.id_pedido, COUNT(DISTINCT ip.id_produto) AS tipos_produtos
-FROM itens_pedido ip
-GROUP BY ip.id_pedido
-HAVING tipos_produtos > 1;
+-- 13. Pedidos de Maria Oliveira
+SELECT ped.* 
+FROM pedidos ped
+INNER JOIN clientes cli ON ped.id_cliente = cli.id
+WHERE cli.nome = 'Maria Oliveira';
 
-SELECT p.*, c.nome AS categoria
+-- 14. Produtos acima de R$ 1000
+SELECT * FROM produtos WHERE preco > 1000;
+
+-- 15. Produtos nunca pedidos
+SELECT p.* 
 FROM produtos p
-JOIN categorias c ON p.id_categoria = c.id;
+LEFT JOIN itens_pedido ip ON p.id = ip.id_produto
+WHERE ip.id_produto IS NULL;
 
-SELECT c.nome, c.email, COUNT(p.id) AS total_pedidos
-FROM clientes c
-LEFT JOIN pedidos p ON c.id = p.id_cliente
-GROUP BY c.id
+-- 16. Pedidos com múltiplos produtos
+SELECT ped.* 
+FROM pedidos ped
+WHERE (SELECT COUNT(DISTINCT id_produto) FROM itens_pedido WHERE id_pedido = ped.id) > 1;
+
+-- 17. Produtos com suas categorias
+SELECT p.nome AS produto, c.nome AS categoria 
+FROM produtos p
+INNER JOIN categorias c ON p.id_categoria = c.id;
+
+-- 18. Clientes e total de pedidos
+SELECT cli.nome, COUNT(ped.id) AS total_pedidos
+FROM clientes cli
+LEFT JOIN pedidos ped ON cli.id = ped.id_cliente
+GROUP BY cli.id
 ORDER BY total_pedidos DESC;
 
-SELECT nome, preco, (preco / 1.1) AS preco_em_euros
+-- 19. Preço em Euros (CORREÇÃO: usar divisão correta)
+SELECT nome, preco, ROUND(preco / 1.1, 2) AS preco_em_euros 
 FROM produtos;
 
-SELECT * FROM produtos
-WHERE nome LIKE 'S%';
+-- 20. Produtos começando com "S"
+SELECT * FROM produtos WHERE nome LIKE 'S%';
